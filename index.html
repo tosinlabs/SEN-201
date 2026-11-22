@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UNILAG Lecture Venues and Exam Seats</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="top">
+        <a href="#find">
+          <img
+            src="assets/images/unilag-logo.png"
+            alt="University of Lagos logo"
+          />
+          <span class="site-name">University of Lagos</span>
+          <span class="site-sub">Lecture venues and exam seats</span>
+        </a>
+      </div>
+      <nav class="menu" aria-label="Main">
+        <div class="wrap">
+          <a href="#find">Find my exam seat</a>
+          <a href="#venues">Lecture venues</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="hero" id="find">
+        <div class="wrap">
+          <div>
+            <h1>Know your exam seat before you walk in.</h1>
+            <p class="lead">
+              Enter your matric number to see your venue, row and seat number
+              for exams and tests.
+            </p>
+
+            <form class="lookup" id="lookup" novalidate>
+              <label for="matric">Matric number</label>
+              <div class="row">
+                <input
+                  id="matric"
+                  name="matric"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder="e.g. 250805012"
+                />
+                <button class="btn" type="submit">Find my seat</button>
+              </div>
+              <p class="hint">Demo data: try 250805012 or 250805047.</p>
+              <p id="result" role="status" aria-live="polite"></p>
+            </form>
+          </div>
+
+          <div class="map">
+            <div class="map-title">
+              <strong id="mapName">E303</strong>
+              <span id="mapMeta">Sample layout, spaced for exams</span>
+            </div>
+            <div class="stage">Front of hall</div>
+            <div
+              class="grid"
+              id="grid"
+              role="img"
+              aria-label="Seating plan of the exam venue"
+            ></div>
+            <div class="legend">
+              <span><i></i>Free</span>
+              <span><i class="t"></i>Taken</span>
+              <span><i class="b"></i>Not in use</span>
+              <span><i class="y"></i>Your seat</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="strip">
+        <div class="wrap">
+          <div class="steps">
+            <div>
+              <h3>Lectures get a venue</h3>
+              <p>
+                Each course is placed in a hall that fits its class, with no two
+                courses in one room at the same time.
+              </p>
+            </div>
+            <div>
+              <h3>Exams and tests get a seat</h3>
+              <p>
+                Every student is given a row and seat number, with spacing
+                applied between students.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section id="venues">
+        <div class="wrap">
+          <h2>Lecture venues</h2>
+          <p class="sub">
+            Rooms used by Computer Science 200 level. Lecture seats and exam
+            seats are listed separately because exams need empty seats between
+            students.
+          </p>
+
+          <div class="filters">
+            <input
+              type="search"
+              id="q"
+              placeholder="Search venue"
+              aria-label="Search venue"
+            />
+          </div>
+
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Venue</th>
+                  <th>Type</th>
+                  <th class="num">Lecture seats</th>
+                  <th class="num">Exam seats</th>
+                </tr>
+              </thead>
+              <tbody id="venueRows"></tbody>
+            </table>
+          </div>
+
+          <h3 class="table-title">Where each course holds</h3>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Course</th>
+                  <th>Venue</th>
+                  <th>Day</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="courseRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>University of Lagos, Akoka, Lagos</span>
+        <span>Need help? Contact your department office.</span>
+      </div>
+    </footer>
+
+    <script>
+      // ---- Data (replace with real data from your backend) ----
+      // Seat counts are null until the real capacities are collected.
+      var venues = [
+        { name: "S006", type: "Lecture hall", lecture: null, exam: null },
+        { name: "E303", type: "Lecture hall", lecture: null, exam: null },
+        { name: "E304", type: "Lecture hall", lecture: null, exam: null },
+      ];
+      // Each item: { course: "CSC 201", venue: "E303", day: "Monday", time: "10:00 am" }
+      var allocations = [];
+      // Demo students only. Real seats will come from the allocation results.
+      var students = {
+        250805012: {
+          venue: "E303",
+          row: 4,
+          seat: 7,
+          course: "CSC 201",
+          time: "9:00 am",
+        },
+        250805047: {
+          venue: "E303",
+          row: 8,
+          seat: 13,
+          course: "CSC 201",
+          time: "9:00 am",
+        },
+      };
+
+      // ---- Seat map ----
+      var ROWS = 10,
+        COLS = 16,
+        AISLE_AFTER = 8;
+      var grid = document.getElementById("grid");
+      grid.style.gridTemplateColumns =
+        "repeat(" + (COLS + 1) + ", minmax(0, 22px))";
+
+      function buildGrid(highlight) {
+        grid.innerHTML = "";
+        for (var r = 1; r <= ROWS; r++) {
+          for (var c = 1; c <= COLS; c++) {
+            if (c === AISLE_AFTER + 1) {
+              var g = document.createElement("div");
+              g.className = "seat gap";
+              grid.appendChild(g);
+            }
+            var s = document.createElement("div");
+            var cls = "seat";
+            if ((r + c) % 2 === 1)
+              cls += " blocked"; // alternate seats unused for exams
+            else if ((r * 7 + c * 3) % 5 === 0) cls += " taken";
+            if (highlight && highlight.row === r && highlight.seat === c)
+              cls = "seat yours";
+            s.className = cls;
+            grid.appendChild(s);
+          }
+        }
+      }
+      buildGrid();
+
+      // ---- Exam seat lookup ----
+      var result = document.getElementById("result");
+      document
+        .getElementById("lookup")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          var id = document.getElementById("matric").value.trim();
+          result.className = "";
+          if (!id) {
+            result.className = "error";
+            result.textContent = "Enter your matric number to continue.";
+            return;
+          }
+          var s = students[id];
+          if (!s) {
+            result.className = "error";
+            result.textContent =
+              "No seat found for " +
+              id +
+              ". Check the number or contact your department office.";
+            buildGrid();
+            return;
+          }
+          result.innerHTML =
+            "<strong>" +
+            s.course +
+            "</strong> at " +
+            s.time +
+            " in " +
+            s.venue +
+            ". Row " +
+            s.row +
+            ", seat " +
+            s.seat +
+            ".";
+          buildGrid({ row: s.row, seat: s.seat });
+          document.getElementById("mapName").textContent = s.venue;
+        });
+
+      // ---- Lecture venues table ----
+      var venueRows = document.getElementById("venueRows");
+      function seats(n) {
+        return n === null ? "<span class='empty'>Not added</span>" : n;
+      }
+      function renderVenues() {
+        var q = document.getElementById("q").value.toLowerCase();
+        var html = "";
+        venues.forEach(function (v) {
+          if (q && v.name.toLowerCase().indexOf(q) === -1) return;
+          html +=
+            "<tr><td>" +
+            v.name +
+            "</td><td>" +
+            v.type +
+            "</td>" +
+            "<td class='num'>" +
+            seats(v.lecture) +
+            "</td>" +
+            "<td class='num'>" +
+            seats(v.exam) +
+            "</td></tr>";
+        });
+        venueRows.innerHTML =
+          html ||
+          "<tr><td colspan='4' class='empty'>No venues match. Clear the search.</td></tr>";
+      }
+      document.getElementById("q").addEventListener("input", renderVenues);
+      renderVenues();
+
+      // ---- Course allocation table ----
+      var courseRows = document.getElementById("courseRows");
+      function renderCourses() {
+        var html = "";
+        allocations.forEach(function (a) {
+          html +=
+            "<tr><td>" +
+            a.course +
+            "</td><td>" +
+            a.venue +
+            "</td><td>" +
+            a.day +
+            "</td><td>" +
+            a.time +
+            "</td></tr>";
+        });
+        courseRows.innerHTML =
+          html ||
+          "<tr><td colspan='4' class='empty'>Course venues have not been published yet.</td></tr>";
+      }
+      renderCourses();
+    </script>
+  </body>
+</html>
